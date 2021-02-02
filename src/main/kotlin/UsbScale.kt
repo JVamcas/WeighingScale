@@ -13,19 +13,19 @@ class UsbScale(private val device: UsbDevice) : UsbPipeListener {
 
 
     fun open() {
-//        device.apply {
-//            val irp = createUsbControlIrp(
-//                (
-//                        UsbConst.REQUESTTYPE_DIRECTION_OUT
-//                                or UsbConst.REQUESTTYPE_TYPE_STANDARD
-//                                or UsbConst.REQUESTTYPE_RECIPIENT_DEVICE),
-//                UsbConst.REQUEST_GET_CONFIGURATION,
-//                0.toShort(),
-//                0.toShort()
-//            )
-//            irp?.data = byteArrayOf()
-//            syncSubmit(irp)
-//        }
+        device.apply {
+            val irp = createUsbControlIrp(
+                (
+                        UsbConst.REQUESTTYPE_DIRECTION_IN
+                                or UsbConst.REQUESTTYPE_TYPE_STANDARD
+                                or UsbConst.REQUESTTYPE_RECIPIENT_DEVICE),
+                UsbConst.REQUEST_GET_CONFIGURATION,
+                0.toShort(),
+                0.toShort()
+            )
+            irp?.data = data /*byteArrayOf(6)*/
+            syncSubmit(irp)
+        }
         val configuration = device.activeUsbConfiguration
         println("Interfaces: ${configuration.usbInterfaces}")
         iFace = configuration.usbInterfaces[2] as UsbInterface

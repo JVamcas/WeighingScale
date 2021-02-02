@@ -3,54 +3,44 @@ import javax.usb.*
 import javax.usb.event.UsbPipeDataEvent
 import javax.usb.event.UsbPipeErrorEvent
 import javax.usb.event.UsbPipeListener
-import kotlin.experimental.or
 
 class WeighingScaleReader(property: SimpleStringProperty? = null) {
 
+    private val iDVendor: Short = 0x067b
+    private val iDProduct: Short = 0x2303
 
-    private val idVendor: Short = 0x05ba
-    private val idProduct: Short = 0x000a
     var device: UsbDevice? = null
     private var iFace: UsbInterface? = null
+    private lateinit var usbPipe: UsbPipe
+    private val data = ByteArray(8)
 
     init {
         val services = UsbHostManager.getUsbServices()
-        device = findDevice(services.rootUsbHub, idVendor, idProduct)
+        val hub = services.rootUsbHub
+        device = findDevice(hub, iDVendor, iDProduct)//1. find the usb device
         device?.apply {
-            val irp = createUsbControlIrp(
-                (
-                        UsbConst.REQUESTTYPE_DIRECTION_IN
-                                or UsbConst.REQUESTTYPE_TYPE_STANDARD
-                                or UsbConst.REQUESTTYPE_RECIPIENT_DEVICE),
-                UsbConst.REQUEST_GET_CONFIGURATION,
-                0.toShort(),
-                0.toShort()
-            )
-            irp?.data = byteArrayOf()
-            syncSubmit(irp)
-
             val config = activeUsbConfiguration
             println("Interfaces: ${config.usbInterfaces}")
-            //need this usb interface value
-            iFace = config.getUsbInterface(3.toByte())
-            readDevice()
+            iFace = config.usbInterfaces[0] as UsbInterface //2. obtain device interface
         }
     }
 
-    private fun readDevice() {
+    fun readDevice() {
         iFace?.apply {
-            claim { true } //1. claim the interface
-            val endpoint = getUsbEndpoint(0x83.toByte())
-            val pipe = endpoint.usbPipe //2 get the usbpipe
+            println("Active $isActive")
+            println("Claimed $isClaimed")
+            println("Active interfaces $activeSetting")
+            claim { true } //3. claim the interface
+            val endpoint = usbEndpoints[0] as UsbEndpoint
+            usbPipe = endpoint.usbPipe //4. get the UsbPipe
 
             try {
-                pipe.open()
-                pipe.addUsbPipeListener(object : UsbPipeListener{
+                usbPipe.open() //5. open the pipe and attach listener
+                usbPipe.addUsbPipeListener(object : UsbPipeListener {
                     override fun errorEventOccurred(event: UsbPipeErrorEvent) {
                         val error = event.usbException
                         println(error.message)
-                        pipe.close()
-                        iFace?.release()
+                        close()
                     }
 
                     override fun dataEventOccurred(event: UsbPipeDataEvent) {
@@ -61,29 +51,58 @@ class WeighingScaleReader(property: SimpleStringProperty? = null) {
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
-//                pipe.close()
-//                iFace?.release()
+                close()
             }
         }
-    }
 
-
-    fun listUsBDevices(hub: UsbHub) {
-        hub.attachedUsbDevices.forEach {
-            val desc = it as UsbDevice
-            println("Device Description is:\n${desc.usbDeviceDescriptor}")
+        try {
+            while (true) {//can have an atomic variable here to listen for close instructions
+//                syncSubmit()
+                usbPipe.asyncSubmit(data)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            close()
         }
     }
 
-    private fun findDevice(hub: UsbHub, vendorId: Short, productId: Short): UsbDevice? {
+//    fun syncSubmit() {
+//        try {
+//            usbPipe.asyncSubmit(data)
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//        }
+//    }
 
-        hub.attachedUsbDevices.forEach {
-            val device = it as UsbDevice
-            val devDesc = device.usbDeviceDescriptor
-            if (devDesc.idVendor() == vendorId && devDesc.idProduct() == productId) return device
+    fun close() {
+        usbPipe.close()
+        iFace?.release()
+    }
+
+    companion object {
+        fun listUsBDevices(hub: UsbHub) {
+            hub.attachedUsbDevices.forEach {
+                if (it is UsbHub)
+                    listUsBDevices(it)
+                else {
+                    val desc = it as UsbDevice
+                    println(desc.usbDeviceDescriptor)
+                }
+            }
         }
 
-        return null
+        private fun findDevice(hub: UsbHub, vendorId: Short, productId: Short): UsbDevice? {
+            hub.attachedUsbDevices.forEach {
+                if (it is UsbHub)
+                    return findDevice(it, vendorId, productId)
+
+                val device = it as UsbDevice
+                val devDesc = device.usbDeviceDescriptor
+                if (devDesc.idVendor() == vendorId && devDesc.idProduct() == productId) return device
+            }
+            return null
+        }
     }
 }
 

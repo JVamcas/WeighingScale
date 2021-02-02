@@ -1,21 +1,23 @@
-
-const val idVendor: Short = 0x12d1
-const val idProduct: Short = 0x107d
+import javax.usb.UsbHostManager
 
 fun main() {
 
     // Get the USB services and dump information about them
-//    UsbScale.listUsBDevices()
+    val services = UsbHostManager.getUsbServices()
+    val hub = services.rootUsbHub
+//    WeighingScaleReader.listUsBDevices(hub)
 
-    val device = UsbScale.findDevice(idVendor, idProduct)
-    val scale = UsbScale(device!!)
-    scale.open()
 
-    try {
-        while (true) {
-            scale.syncSubmit()
-        }
-    } finally {
-        scale.close()
-    }
+//    val device = UsbScale.findDevice(idVendor, idProduct)
+//    val scale = UsbScale(device!!)
+    val scale = WeighingScaleReader()
+    scale.readDevice()
+//
+//    try {
+//        while (true) {
+//            scale.syncSubmit()
+//        }
+//    } finally {
+//        scale.close()
+//    }
 }
