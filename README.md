@@ -1,6 +1,6 @@
 # WeighingScale
 
-This program makes use of [this api](https://fazecast.github.io/jSerialComm/) to read an old weighing scale at our factory.
+This program makes use of [this api](https://fazecast.github.io/jSerialComm/) to read an old weighing scale (Masmattic Scale) at our factory.
 
 The scale is connected to the computer via a USB-Serial Converter
 
@@ -10,7 +10,7 @@ The scale is connected to the computer via a USB-Serial Converter
 1. Install the correct drivers for the USB-Serial Adapter
 2. A virtual serial com port (e.g. COM3) will be created on the computer, use that for connecting to the scale
 3. Make sure the scale configuration is correct i.e the:
-* baudrate - very important, you might get garbage data if you get this wrong
-* number of stop bits
-* data bits
-* parity bits
+  * baudrate - very important, you might get garbage data if you get this wrong
+  * number of stop bits
+  * data bits
+  * parity bits
