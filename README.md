@@ -16,4 +16,4 @@ The scale is connected to the computer via a USB-Serial Converter
   * parity bits
   
   
-**For this scale the serial data format configuration was [2400, 8, 2, 1]**
+__For this scale the serial data format configuration was [2400, 8, 2, 1]__
