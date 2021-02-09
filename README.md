@@ -1,4 +1,4 @@
-# WeighingScale
+# WeighingScale  - using Kotlin/ Java
 
 This program makes use of [this api](https://fazecast.github.io/jSerialComm/) to read an old weighing scale (Masmattic Scale) at our factory.
 
