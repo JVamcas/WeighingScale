@@ -1,23 +1,14 @@
-import javax.usb.UsbHostManager
+import gnu.io.NRSerialPort
+import gnu.io.SerialPortEvent
+import gnu.io.SerialPortEventListener
+import javafx.beans.property.SimpleStringProperty
+import java.io.DataInputStream
+import java.io.DataOutputStream
+
 
 fun main() {
 
-    // Get the USB services and dump information about them
-    val services = UsbHostManager.getUsbServices()
-    val hub = services.rootUsbHub
-//    WeighingScaleReader.listUsBDevices(hub)
 
-
-//    val device = UsbScale.findDevice(idVendor, idProduct)
-//    val scale = UsbScale(device!!)
-    val scale = WeighingScaleReader()
-    scale.readDevice()
-//
-//    try {
-//        while (true) {
-//            scale.syncSubmit()
-//        }
-//    } finally {
-//        scale.close()
-//    }
+    val property = SimpleStringProperty()
+    WeighingScaleReader(property).read()
 }

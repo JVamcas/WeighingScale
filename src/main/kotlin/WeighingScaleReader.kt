@@ -1,108 +1,60 @@
+import com.fazecast.jSerialComm.*
+import javafx.application.Platform
 import javafx.beans.property.SimpleStringProperty
-import javax.usb.*
-import javax.usb.event.UsbPipeDataEvent
-import javax.usb.event.UsbPipeErrorEvent
-import javax.usb.event.UsbPipeListener
+import java.lang.Exception
+import java.nio.charset.Charset
 
-class WeighingScaleReader(property: SimpleStringProperty? = null) {
+class WeighingScaleReader(private val property: SimpleStringProperty) {
 
-    private val iDVendor: Short = 0x067b
-    private val iDProduct: Short = 0x2303
-
-    var device: UsbDevice? = null
-    private var iFace: UsbInterface? = null
-    private lateinit var usbPipe: UsbPipe
-    private val data = ByteArray(8)
+    private val comPort: SerialPort = SerialPort.getCommPort("COM3")
+    private val stopByte = 0x0d.toByte()
 
     init {
-        val services = UsbHostManager.getUsbServices()
-        val hub = services.rootUsbHub
-        device = findDevice(hub, iDVendor, iDProduct)//1. find the usb device
-        device?.apply {
-            val config = activeUsbConfiguration
-            println("Interfaces: ${config.usbInterfaces}")
-            iFace = config.usbInterfaces[0] as UsbInterface //2. obtain device interface
-        }
+
+        //[2400,7,n,1]
+
+        comPort.baudRate = 2400
+        /**Need to get this right as your scale might be very slow*/
+        comPort.parity = SerialPort.NO_PARITY
+        comPort.numStopBits = SerialPort.ONE_STOP_BIT
+        comPort.numDataBits = 7
     }
 
-    fun readDevice() {
-        iFace?.apply {
-            println("Active $isActive")
-            println("Claimed $isClaimed")
-            println("Active interfaces $activeSetting")
-            claim { true } //3. claim the interface
-            val endpoint = usbEndpoints[0] as UsbEndpoint
-            usbPipe = endpoint.usbPipe //4. get the UsbPipe
+    fun read() {
+        comPort.addDataListener(object : SerialPortMessageListenerWithExceptions {
+            override fun getListeningEvents() = SerialPort.LISTENING_EVENT_DATA_RECEIVED
 
-            try {
-                usbPipe.open() //5. open the pipe and attach listener
-                usbPipe.addUsbPipeListener(object : UsbPipeListener {
-                    override fun errorEventOccurred(event: UsbPipeErrorEvent) {
-                        val error = event.usbException
-                        println(error.message)
-                        close()
+            override fun serialEvent(p0: SerialPortEvent) {
+                if (p0.eventType == SerialPort.LISTENING_EVENT_DATA_RECEIVED) {
+                    val data = p0.receivedData
+                    if (data.size == 17) {
+                        val weightArray = data.copyOfRange(2, 8)
+                        val weight = String(weightArray, Charset.forName("UTF-8")).toInt()
+                        Platform.runLater { property.set(weight.toString()) }
                     }
-
-                    override fun dataEventOccurred(event: UsbPipeDataEvent) {
-                        val data = String(event.data)
-                        println("Data: $data")
-                    }
-                })
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                close()
-            }
-        }
-
-        try {
-            while (true) {//can have an atomic variable here to listen for close instructions
-//                syncSubmit()
-                usbPipe.asyncSubmit(data)
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            close()
-        }
-    }
-
-//    fun syncSubmit() {
-//        try {
-//            usbPipe.asyncSubmit(data)
-//        } catch (e: Exception) {
-//            e.printStackTrace()
-//        }
-//    }
-
-    fun close() {
-        usbPipe.close()
-        iFace?.release()
-    }
-
-    companion object {
-        fun listUsBDevices(hub: UsbHub) {
-            hub.attachedUsbDevices.forEach {
-                if (it is UsbHub)
-                    listUsBDevices(it)
-                else {
-                    val desc = it as UsbDevice
-                    println(desc.usbDeviceDescriptor)
                 }
             }
-        }
 
-        private fun findDevice(hub: UsbHub, vendorId: Short, productId: Short): UsbDevice? {
-            hub.attachedUsbDevices.forEach {
-                if (it is UsbHub)
-                    return findDevice(it, vendorId, productId)
+            override fun getMessageDelimiter() = byteArrayOf(stopByte)
 
-                val device = it as UsbDevice
-                val devDesc = device.usbDeviceDescriptor
-                if (devDesc.idVendor() == vendorId && devDesc.idProduct() == productId) return device
+            override fun delimiterIndicatesEndOfMessage() = true
+
+            override fun catchException(p0: Exception) {
+                stopRead()
+                AbstractView.Error.showError(header = "Scale Error.", msg = "Unable to read from scale.")
             }
-            return null
+        })
+        comPort.openPort()
+
+    }
+
+    fun stopRead() {
+        try {
+            comPort.closePort()
+            comPort.removeDataListener()
+        } catch (e: Exception) {
         }
     }
 }
+
 
