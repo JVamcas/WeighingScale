@@ -8,6 +8,9 @@ The scale is connected to the computer via a USB-Serial Converter
 ## How to use it:
 
 1. Install the correct drivers for the USB-Serial Adapter
-2. A virtual serial com port (e.g. COM3) will be created on the computer
+2. A virtual serial com port (e.g. COM3) will be created on the computer, use that for connecting to the scale
 3. Make sure the scale configuration is correct i.e the:
-* 
+* baudrate - very important, you might get garbage data if you get this wrong
+* number of stop bits
+* data bits
+* parity bits
